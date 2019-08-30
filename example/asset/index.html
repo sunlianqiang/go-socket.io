@@ -21,20 +21,17 @@
     <script src="/socket.io.js"></script>
     <script src="/jquery.js"></script>
     <script>
-      var socket = io();
-      // socket.emit('msg', 'hello');
-      var s2 = io("/chat");
-      socket.on('reply', function(msg){
-        $('#messages').append($('<li>').text(msg));
-      });
+      var socket = io("/socket.io");
+     
       $('form').submit(function(){
-        s2.emit('msg', $('#m').val(), function(data){
-          $('#messages').append($('<li>').text('ACK CALLBACK: ' + data));
+          socket.emit('notice', $('#m').val());
+          $('#m').val('');
+          return false;
         });
-        socket.emit('notice', $('#m').val());
-        $('#m').val('');
-        return false;
-      });
+        socket.on('notice', function(msg){
+          $('#messages').append($('<li>').text(msg));
+          window.scrollTo(0, document.body.scrollHeight);
+        });
     </script>
   </body>
 </html>

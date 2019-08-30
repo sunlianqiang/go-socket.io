@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	socketio "github.com/googollee/go-socket.io"
 )
@@ -13,29 +14,33 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	server.OnConnect("/", func(s socketio.Conn) error {
+	server.OnConnect("/socket.io", func(s socketio.Conn) error {
 		s.SetContext("")
 		fmt.Println("connected:", s.ID())
+		server.JoinRoom("ceres", s)
 		return nil
 	})
-	server.OnEvent("/", "notice", func(s socketio.Conn, msg string) {
+
+	go func(server *socketio.Server) {
+		for i := 0; i < 500; i++ {
+
+			msg := fmt.Sprintf("broadcast progress %v/5", i)
+			fmt.Println(msg)
+			server.BroadcastToRoom("ceres", "notice", msg)
+			time.Sleep(time.Second * 5)
+		}
+	}(server)
+
+	server.OnEvent("/socket.io", "notice", func(s socketio.Conn, msg string) {
 		fmt.Println("notice:", msg)
-		s.Emit("reply", "have "+msg)
+		s.Emit("notice", "have "+msg)
+		server.BroadcastToRoom("ceres", "notice", fmt.Sprintf("send all msg:%v", msg))
 	})
-	server.OnEvent("/chat", "msg", func(s socketio.Conn, msg string) string {
-		s.SetContext(msg)
-		return "recv " + msg
-	})
-	server.OnEvent("/", "bye", func(s socketio.Conn) string {
-		last := s.Context().(string)
-		s.Emit("bye", last)
-		s.Close()
-		return last
-	})
-	server.OnError("/", func(e error) {
+
+	server.OnError("/socket.io", func(e error) {
 		fmt.Println("meet error:", e)
 	})
-	server.OnDisconnect("/", func(s socketio.Conn, msg string) {
+	server.OnDisconnect("/socket.io", func(s socketio.Conn, msg string) {
 		fmt.Println("closed", msg)
 	})
 	go server.Serve()
